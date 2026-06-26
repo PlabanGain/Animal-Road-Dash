@@ -93,8 +93,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           }
 
           final activeStage = gameState.activeStage;
-          final wallIndex = gameState.currentWallIndex.clamp(0, activeStage.targetAnimals.length - 1);
-          final currentTargetAnimal = activeStage.targetAnimals[wallIndex];
 
           return Stack(
             children: [
@@ -267,58 +265,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Target Animal Hint Deck
-                      Container(
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(16.0),
-                          border: Border.all(
-                            color: gameState.isCrashed ? Colors.red : const Color(0xFF00FFCC).withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            // Cute animal portrait placeholder color gradient
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: currentTargetAnimal.gradientColors,
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  currentTargetAnimal.name.substring(0, min(currentTargetAnimal.name.length, 2)),
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12.0),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'UPCOMING CUTOUT: ${currentTargetAnimal.name.toUpperCase()}',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.0),
-                                  ),
-                                  const SizedBox(height: 2.0),
-                                  Text(
-                                    currentTargetAnimal.vocalClue,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 11.5),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12.0),
+
 
                       // Voice input actions
                       Row(
