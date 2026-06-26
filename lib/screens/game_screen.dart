@@ -211,7 +211,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 ),
               ),
 
-              // 3. Middle Stage Crash Vignette & Stumble Status Overlay (Non-blocking)
+              // 3. Middle Stage Crash Vignette (Non-blocking)
               if (gameState.isCrashed)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -222,31 +222,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           width: 12.0,
                         ),
                         color: Colors.red.withOpacity(0.08),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.85),
-                                borderRadius: BorderRadius.circular(12.0),
-                                border: Border.all(color: Colors.redAccent, width: 1.5),
-                              ),
-                              child: Text(
-                                'CRASHED! RECOVERING IN ${gameState.recoveryTimeLeft.toStringAsFixed(1)}s',
-                                style: const TextStyle(
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.0,
-                                  letterSpacing: 1.2,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -347,66 +322,42 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
                       // Voice input actions
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Speech mic activator button
-                          GestureDetector(
-                            onTapDown: (_) => gameState.startVoiceListening(),
-                            onTapUp: (_) => _showListeningModal(context, gameState),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: gameState.isListening ? Colors.red : const Color(0xFF00FFCC),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (gameState.isListening ? Colors.red : const Color(0xFF00FFCC)).withOpacity(0.4),
-                                    blurRadius: gameState.isListening ? 20 : 10,
-                                    spreadRadius: gameState.isListening ? 4 : 1,
-                                  )
-                                ],
-                              ),
-                              child: Icon(
-                                gameState.isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-                                color: Colors.black,
-                                size: 30.0,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12.0),
-                          // Manual Text Simulator Input Field (For simple simulator testing)
+                          // Left spacing to center the mic button
+                          const SizedBox(width: 50.0),
+                          
+                          // Centered Speech mic activator button
                           Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(30.0),
-                                border: Border.all(color: Colors.white24),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _voiceInputController,
-                                      style: const TextStyle(color: Colors.white, fontSize: 13.0),
-                                      decoration: const InputDecoration(
-                                        hintText: 'Type sound (e.g. "meow")',
-                                        hintStyle: TextStyle(color: Colors.white38),
-                                        border: InputBorder.none,
-                                      ),
-                                      onSubmitted: (_) => _submitVoiceInput(gameState),
-                                    ),
+                            child: Center(
+                              child: GestureDetector(
+                                onTapDown: (_) => gameState.startVoiceListening(),
+                                onTapUp: (_) => _showListeningModal(context, gameState),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: gameState.isListening ? Colors.red : const Color(0xFF00FFCC),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (gameState.isListening ? Colors.red : const Color(0xFF00FFCC)).withOpacity(0.4),
+                                        blurRadius: gameState.isListening ? 20 : 10,
+                                        spreadRadius: gameState.isListening ? 4 : 1,
+                                      )
+                                    ],
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.send_rounded, color: Color(0xFF00FFCC)),
-                                    onPressed: () => _submitVoiceInput(gameState),
+                                  child: Icon(
+                                    gameState.isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                                    color: Colors.black,
+                                    size: 30.0,
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10.0),
+                          
                           // Simulation Cheat button for easy passing
                           GestureDetector(
                             onTap: () {
