@@ -379,6 +379,8 @@ class _TradingCardDetailDialog extends StatefulWidget {
 
 class _TradingCardDetailDialogState extends State<_TradingCardDetailDialog> with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
+  double _tiltX = 0.0;
+  double _tiltY = 0.0;
 
   @override
   void initState() {
@@ -395,6 +397,24 @@ class _TradingCardDetailDialogState extends State<_TradingCardDetailDialog> with
     super.dispose();
   }
 
+  void _updateTilt(Offset localPosition, Size size) {
+    final double width = size.width > 0 ? size.width : 320.0;
+    final double height = size.height > 0 ? size.height : 520.0;
+    setState(() {
+      _tiltX = (localPosition.dx / width * 2) - 1;
+      _tiltY = (localPosition.dy / height * 2) - 1;
+      _tiltX = _tiltX.clamp(-1.0, 1.0);
+      _tiltY = _tiltY.clamp(-1.0, 1.0);
+    });
+  }
+
+  void _resetTilt() {
+    setState(() {
+      _tiltX = 0.0;
+      _tiltY = 0.0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -409,40 +429,97 @@ class _TradingCardDetailDialogState extends State<_TradingCardDetailDialog> with
               AnimatedBuilder(
                 animation: _rotationController,
                 builder: (context, child) {
-                  return Container(
-                    width: 320,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      gradient: SweepGradient(
-                        center: Alignment.center,
-                        colors: const [
-                          Colors.red, Colors.orange, Colors.yellow, 
-                          Colors.green, Colors.blue, Colors.purple, Colors.red
-                        ],
-                        transform: GradientRotation(_rotationController.value * 2 * pi),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.animal.gradientColors[0].withOpacity(0.6),
-                          blurRadius: 30,
-                          spreadRadius: 2,
-                        ),
-                      ],
+                  return TweenAnimationBuilder<Offset>(
+                    tween: Tween<Offset>(
+                      begin: Offset.zero,
+                      end: Offset(_tiltX, _tiltY),
                     ),
-                    padding: const EdgeInsets.all(5.0), // border thickness
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(25.0),
-                        image: DecorationImage(
-                          image: AssetImage('assets/images/card_${widget.animal.id}.png'),
-                          fit: BoxFit.cover,
-                          opacity: 0.9,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, tilt, child) {
+                      return Transform(
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001) // 3D Perspective
+                          ..rotateX(-tilt.dy * 0.15) // Rotate X (up/down)
+                          ..rotateY(tilt.dx * 0.15), // Rotate Y (left/right)
+                        alignment: Alignment.center,
+                        child: MouseRegion(
+                          onHover: (event) => _updateTilt(event.localPosition, const Size(320, 520)),
+                          onExit: (_) => _resetTilt(),
+                          child: GestureDetector(
+                            onPanUpdate: (details) => _updateTilt(details.localPosition, const Size(320, 520)),
+                            onPanEnd: (_) => _resetTilt(),
+                            onPanCancel: () => _resetTilt(),
+                            child: Container(
+                              width: 320,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30.0),
+                                gradient: SweepGradient(
+                                  center: Alignment.center,
+                                  colors: const [
+                                    Colors.red, Colors.orange, Colors.yellow, 
+                                    Colors.green, Colors.blue, Colors.purple, Colors.red
+                                  ],
+                                  transform: GradientRotation(_rotationController.value * 2 * pi),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: widget.animal.gradientColors[0].withOpacity(0.6),
+                                    blurRadius: 30,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.all(5.0), // border thickness
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(25.0),
+                                child: Stack(
+                                  children: [
+                                    // Base black layer to prevent see-through edges
+                                    Positioned.fill(
+                                      child: Container(color: Colors.black),
+                                    ),
+                                    
+                                    // 1. Background layer: bg_*.png shifts opposite of tilt
+                                    Positioned.fill(
+                                      child: Transform.translate(
+                                        offset: Offset(-tilt.dx * 12.0, -tilt.dy * 12.0),
+                                        child: Transform.scale(
+                                          scale: 1.15,
+                                          child: Image.asset(
+                                            'assets/images/bg_${widget.animal.id}.png',
+                                            fit: BoxFit.cover,
+                                            opacity: const AlwaysStoppedAnimation(0.75),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    // 2. Foreground layer: card_*.png shifts with tilt
+                                    Transform.translate(
+                                      offset: Offset(tilt.dx * 6.0, tilt.dy * 6.0),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.4),
+                                          image: DecorationImage(
+                                            image: AssetImage('assets/images/card_${widget.animal.id}.png'),
+                                            fit: BoxFit.cover,
+                                            opacity: 0.85,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: child,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      padding: const EdgeInsets.all(16.0),
-                      child: child,
-                    ),
+                      );
+                    },
+                    child: child,
                   );
                 },
                 child: Column(
