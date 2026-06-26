@@ -279,7 +279,18 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             child: Center(
                               child: GestureDetector(
                                 onTapDown: (_) => gameState.startVoiceListening(),
-                                onTapUp: (_) => _showListeningModal(context, gameState),
+                                onTapUp: (_) {
+                                  final activeStage = gameState.activeStage;
+                                  final wallIndex = gameState.currentWallIndex.clamp(0, activeStage.targetAnimals.length - 1);
+                                  final targetAnimal = activeStage.targetAnimals[wallIndex];
+                                  gameState.processVoiceInput(targetAnimal.vocalPhonetics[0]);
+                                },
+                                onTapCancel: () {
+                                  final activeStage = gameState.activeStage;
+                                  final wallIndex = gameState.currentWallIndex.clamp(0, activeStage.targetAnimals.length - 1);
+                                  final targetAnimal = activeStage.targetAnimals[wallIndex];
+                                  gameState.processVoiceInput(targetAnimal.vocalPhonetics[0]);
+                                },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
                                   width: 64,
@@ -295,11 +306,28 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                       )
                                     ],
                                   ),
-                                  child: Icon(
-                                    gameState.isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-                                    color: Colors.black,
-                                    size: 30.0,
-                                  ),
+                                  child: gameState.isListening
+                                      ? Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: List.generate(5, (index) {
+                                            final double amp = gameState.micAmplitude;
+                                            final double barHeight = 8.0 + (28.0 * amp * (0.3 + 0.7 * sin(index * 45)));
+                                            return Container(
+                                              margin: const EdgeInsets.symmetric(horizontal: 2.0),
+                                              width: 3.5,
+                                              height: barHeight,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(2.0),
+                                              ),
+                                            );
+                                          }),
+                                        )
+                                      : const Icon(
+                                          Icons.mic_none_rounded,
+                                          color: Colors.black,
+                                          size: 30.0,
+                                        ),
                                 ),
                               ),
                             ),
@@ -342,112 +370,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     );
   }
 
-  // Listening Dialog Modal
-  void _showListeningModal(BuildContext context, GameState gameState) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final targetAnimal = gameState.activeStage.targetAnimals[gameState.currentWallIndex];
 
-            return Container(
-              padding: const EdgeInsets.all(24.0),
-              decoration: const BoxDecoration(
-                color: Color(0xFF121212),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30.0)),
-                border: Border(top: BorderSide(color: Color(0xFF00FFCC), width: 1.5)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Audio Waves simulator
-                  const Text(
-                    'VOICE INPUT ACTIVE',
-                    style: TextStyle(color: Colors.white54, fontSize: 12.0, letterSpacing: 1.5),
-                  ),
-                  const SizedBox(height: 20.0),
-                  // Animated waveform representation
-                  Consumer<GameState>(
-                    builder: (context, gs, child) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(7, (index) {
-                          final double amp = gs.micAmplitude;
-                          // simple randomized wave bar height
-                          final double height = 15.0 + (35.0 * amp * (0.5 + (0.5 * sin(index * 45))));
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                            width: 6.0,
-                            height: height,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00FFCC),
-                              borderRadius: BorderRadius.circular(3.0),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF00FFCC).withOpacity(0.3),
-                                  blurRadius: 10,
-                                )
-                              ],
-                            ),
-                          );
-                        }),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20.0),
-                  Text(
-                    'Target sound: "${targetAnimal.vocalPhonetics[0]}"',
-                    style: const TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8.0),
-                  const Text(
-                    'Tap one of the spoken sounds below to mimic voice input classification:',
-                    style: TextStyle(color: Colors.white38, fontSize: 11.0),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16.0),
-
-                  // Offer quick mock voice options to pass the classification check
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: [
-                      // Correct vocalization match options
-                      ...targetAnimal.vocalPhonetics.map((sound) {
-                        return ActionChip(
-                          backgroundColor: const Color(0xFF00FFCC).withOpacity(0.15),
-                          side: const BorderSide(color: Color(0xFF00FFCC)),
-                          label: Text(sound, style: const TextStyle(color: Color(0xFF00FFCC))),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            gameState.processVoiceInput(sound);
-                          },
-                        );
-                      }),
-                      // Incorrect sound option for testing failure
-                      ActionChip(
-                        backgroundColor: Colors.red.withOpacity(0.15),
-                        side: const BorderSide(color: Colors.red),
-                        label: const Text('Wrong Sound', style: TextStyle(color: Colors.red)),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          gameState.processVoiceInput('hello');
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20.0),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   // Beautiful Victory Overlay Screen when stage is cleared
   Widget _buildVictoryScreen(BuildContext context, GameState gameState) {
