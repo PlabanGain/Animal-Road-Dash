@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+enum AnimalRarity {
+  common,
+  uncommon,
+  rare,
+  exotic,
+}
+
 class Animal {
   final String id;
   final String name;
@@ -92,6 +99,18 @@ class Animal {
       case 'capybara': return '🐹';
       case 'quokka': return '🐹';
       default: return '🐾';
+    }
+  }
+
+  AnimalRarity get rarityCategory {
+    if (rarity < 2.0) {
+      return AnimalRarity.common;
+    } else if (rarity < 3.5) {
+      return AnimalRarity.uncommon;
+    } else if (rarity < 5.0) {
+      return AnimalRarity.rare;
+    } else {
+      return AnimalRarity.exotic;
     }
   }
 

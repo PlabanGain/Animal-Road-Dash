@@ -228,6 +228,7 @@ class _UnlockedCardItem extends StatefulWidget {
 
 class _UnlockedCardItemState extends State<_UnlockedCardItem> with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
+  bool _isHovered = false;
 
   @override
   void initState() {
@@ -256,111 +257,176 @@ class _UnlockedCardItemState extends State<_UnlockedCardItem> with SingleTickerP
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _openCardDetail(context),
-      child: AnimatedBuilder(
-        animation: _rotationController,
-        builder: (context, child) {
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22.0),
-              gradient: SweepGradient(
-                center: Alignment.center,
-                colors: const [
-                  Colors.red, Colors.orange, Colors.yellow, 
-                  Colors.green, Colors.blue, Colors.purple, Colors.red
-                ],
-                transform: GradientRotation(_rotationController.value * 2 * pi),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.animal.gradientColors[0].withOpacity(0.4),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                )
-              ],
-            ),
-            padding: const EdgeInsets.all(4.0), // border thickness
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(18.0),
-                image: DecorationImage(
-                  image: AssetImage('assets/images/card_${widget.animal.id}.png'),
-                  fit: BoxFit.cover,
-                  opacity: 0.85,
+    final rarity = widget.animal.rarityCategory;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: () => _openCardDetail(context),
+        child: AnimatedScale(
+          scale: _isHovered ? 1.05 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: AnimatedBuilder(
+            animation: _rotationController,
+            builder: (context, child) {
+              Gradient borderGradient;
+              List<BoxShadow> borderShadow;
+
+              switch (rarity) {
+                case AnimalRarity.common:
+                  borderGradient = LinearGradient(
+                    colors: [Colors.grey.shade400, Colors.grey.shade600],
+                  );
+                  borderShadow = [
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.15),
+                      blurRadius: _isHovered ? 8.0 : 4.0,
+                      spreadRadius: _isHovered ? 1.0 : 0.5,
+                    )
+                  ];
+                  break;
+                case AnimalRarity.uncommon:
+                  borderGradient = const LinearGradient(
+                    colors: [Color(0xFF38EF7D), Color(0xFF11998E)],
+                  );
+                  borderShadow = [
+                    BoxShadow(
+                      color: const Color(0xFF11998E).withOpacity(0.35),
+                      blurRadius: _isHovered ? 12.0 : 8.0,
+                      spreadRadius: _isHovered ? 1.5 : 1.0,
+                    )
+                  ];
+                  break;
+                case AnimalRarity.rare:
+                  borderGradient = const LinearGradient(
+                    colors: [Colors.amber, Colors.orange],
+                  );
+                  borderShadow = [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(_isHovered ? 0.6 : 0.4),
+                      blurRadius: _isHovered ? 16.0 : 12.0,
+                      spreadRadius: _isHovered ? 2.0 : 1.5,
+                    )
+                  ];
+                  break;
+                case AnimalRarity.exotic:
+                  borderGradient = SweepGradient(
+                    center: Alignment.center,
+                    colors: const [
+                      Color(0xFF9400D3), Color(0xFF4B0082), Color(0xFF0000FF), 
+                      Color(0xFF00FFCC), Color(0xFF9400D3)
+                    ],
+                    transform: GradientRotation(_rotationController.value * 2 * pi),
+                  );
+                  final pulse = (sin(_rotationController.value * 2 * pi) + 1.0) / 2.0; // 0.0 to 1.0
+                  final baseBlur = _isHovered ? 18.0 : 12.0;
+                  final blur = baseBlur + (pulse * 12.0); // pulses between baseBlur and baseBlur + 12
+                  final baseSpread = _isHovered ? 2.5 : 1.5;
+                  final spread = baseSpread + (pulse * 2.5); // pulses between baseSpread and baseSpread + 2.5
+                  final shadowColor = Color.lerp(const Color(0xFF9400D3), const Color(0xFF00FFCC), pulse)!
+                      .withOpacity(_isHovered ? 0.7 : 0.5);
+
+                  borderShadow = [
+                    BoxShadow(
+                      color: shadowColor,
+                      blurRadius: blur,
+                      spreadRadius: spread,
+                    )
+                  ];
+                  break;
+              }
+
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22.0),
+                  gradient: borderGradient,
+                  boxShadow: borderShadow,
                 ),
-              ),
-              padding: const EdgeInsets.all(10.0),
-              child: child,
-            ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header Name
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.animal.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14.0,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                padding: const EdgeInsets.all(4.0), // border thickness
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(18.0),
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/card_${widget.animal.id}.png'),
+                      fit: BoxFit.cover,
+                      opacity: 0.85,
                     ),
                   ),
+                  padding: const EdgeInsets.all(10.0),
+                  child: child,
                 ),
-                const Icon(
-                  Icons.verified_rounded,
-                  color: Color(0xFF00FFCC),
-                  size: 14.0,
+              );
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header Name
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.animal.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.0,
+                          shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.verified_rounded,
+                      color: Color(0xFF00FFCC),
+                      size: 14.0,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2.0),
+                Text(
+                  widget.animal.scientificName,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.6),
+                    fontStyle: FontStyle.italic,
+                    fontSize: 8.0,
+                  ),
+                ),
+
+                // Animated high-quality floating animal emoji inside a smooth silhouette
+                Expanded(
+                  child: Center(
+                    child: _AnimatedAnimalWidget(animal: widget.animal, baseSize: 42.0),
+                  ),
+                ),
+
+                // Card Footer Summary
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Rarity: ${widget.animal.rarity.toStringAsFixed(0)}★',
+                        style: const TextStyle(color: Colors.white70, fontSize: 8.5, fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'VIEW',
+                        style: TextStyle(color: Color(0xFF00FFCC), fontSize: 8.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 2.0),
-            Text(
-              widget.animal.scientificName,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontStyle: FontStyle.italic,
-                fontSize: 8.0,
-              ),
-            ),
-
-            // Animated high-quality floating animal emoji inside a smooth silhouette
-            Expanded(
-              child: Center(
-                child: _AnimatedAnimalWidget(animal: widget.animal, baseSize: 42.0),
-              ),
-            ),
-
-            // Card Footer Summary
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Rarity: ${widget.animal.rarity.toStringAsFixed(0)}★',
-                    style: const TextStyle(color: Colors.white70, fontSize: 8.5, fontWeight: FontWeight.bold),
-                  ),
-                  const Text(
-                    'VIEW',
-                    style: TextStyle(color: Color(0xFF00FFCC), fontSize: 8.5, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
