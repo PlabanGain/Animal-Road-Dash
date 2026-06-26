@@ -75,10 +75,10 @@ class RoadPainter extends CustomPainter {
     final double len = sqrt(dx * dx + dy * dy);
     final Offset normal = Offset(-dy / len, dx / len); // Normal vector
 
-    // Road width scaling (almost same size all around, from 75 to 100)
+    // Road width scaling (almost same size all around, doubled from 75-100 to 150-200)
     double getRoadWidth(double t) {
-      final double minWidth = 75.0;
-      final double maxWidth = 100.0;
+      final double minWidth = 150.0;
+      final double maxWidth = 200.0;
       return minWidth + (maxWidth - minWidth) * t;
     }
 
