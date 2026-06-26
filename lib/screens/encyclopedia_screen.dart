@@ -1,0 +1,899 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/game_state.dart';
+import '../models/animal.dart';
+
+class EncyclopediaScreen extends StatelessWidget {
+  const EncyclopediaScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text(
+          'BESTIARY CARDS',
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 16.0),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Consumer<GameState>(
+        builder: (context, gameState, child) {
+          final unlockedCount = gameState.unlockedAnimalIds.length;
+          final totalCount = allAnimals.length;
+          final percent = (unlockedCount / totalCount * 100).toStringAsFixed(0);
+
+          return Column(
+            children: [
+              // Unlocked Stats banner
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(16.0),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'COLLECTION COMPLETION',
+                            style: TextStyle(color: Colors.white38, fontSize: 9.0, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                          ),
+                          const SizedBox(height: 4.0),
+                          Text(
+                            '$unlockedCount / $totalCount Animals Unlocked',
+                            style: const TextStyle(color: Colors.white, fontSize: 14.0, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00FFCC).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20.0),
+                          border: Border.all(color: const Color(0xFF00FFCC)),
+                        ),
+                        child: Text(
+                          '$percent%',
+                          style: const TextStyle(color: Color(0xFF00FFCC), fontWeight: FontWeight.bold, fontSize: 13.0),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Scrollable Grid of 50 Trading Cards
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.72,
+                    crossAxisSpacing: 16.0,
+                    mainAxisSpacing: 16.0,
+                  ),
+                  itemCount: allAnimals.length,
+                  itemBuilder: (context, index) {
+                    final animal = allAnimals[index];
+                    final isUnlocked = gameState.unlockedAnimalIds.contains(animal.id);
+
+                    if (isUnlocked) {
+                      return _UnlockedCardItem(animal: animal);
+                    } else {
+                      return _LockedCardItem(animal: animal);
+                    }
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ----------------- LOCKED CARD (With Shake Animation) -----------------
+class _LockedCardItem extends StatefulWidget {
+  final Animal animal;
+
+  const _LockedCardItem({required this.animal, Key? key}) : super(key: key);
+
+  @override
+  State<_LockedCardItem> createState() => _LockedCardItemState();
+}
+
+class _LockedCardItemState extends State<_LockedCardItem> with SingleTickerProviderStateMixin {
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+
+    // Shake curve back and forth
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 12.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 12.0, end: -10.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -10.0, end: 8.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 8.0, end: -6.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -6.0, end: 4.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 4.0, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    super.dispose();
+  }
+
+  void _triggerLockShake() {
+    _shakeController.forward(from: 0.0);
+    // Show quick dialog reminder
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Card Locked! Encounter and clear "${widget.animal.name}" in stages to unlock.'),
+        backgroundColor: Colors.white24,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shakeAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_shakeAnimation.value, 0),
+          child: child,
+        );
+      },
+      child: GestureDetector(
+        onTap: _triggerLockShake,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.02),
+            borderRadius: BorderRadius.circular(20.0),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.03),
+                ),
+                child: const Text(
+                  '?',
+                  style: TextStyle(
+                    color: Colors.white30,
+                    fontSize: 48.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12.0),
+              const Text(
+                'LOCKED CARD',
+                style: TextStyle(
+                  color: Colors.white24,
+                  fontSize: 10.0,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------- UNLOCKED CARD (Pokemon Style) -----------------
+class _UnlockedCardItem extends StatefulWidget {
+  final Animal animal;
+
+  const _UnlockedCardItem({required this.animal, Key? key}) : super(key: key);
+
+  @override
+  State<_UnlockedCardItem> createState() => _UnlockedCardItemState();
+}
+
+class _UnlockedCardItemState extends State<_UnlockedCardItem> with SingleTickerProviderStateMixin {
+  late AnimationController _rotationController;
+
+  @override
+  void initState() {
+    super.initState();
+    // Shimmering rotating gradient for Pokemon Holo effect
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  void _openCardDetail(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return _TradingCardDetailDialog(animal: widget.animal);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openCardDetail(context),
+      child: AnimatedBuilder(
+        animation: _rotationController,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22.0),
+              gradient: SweepGradient(
+                center: Alignment.center,
+                colors: const [
+                  Colors.red, Colors.orange, Colors.yellow, 
+                  Colors.green, Colors.blue, Colors.purple, Colors.red
+                ],
+                transform: GradientRotation(_rotationController.value * 2 * pi),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.animal.gradientColors[0].withOpacity(0.4),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                )
+              ],
+            ),
+            padding: const EdgeInsets.all(4.0), // border thickness
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(18.0),
+                image: DecorationImage(
+                  image: AssetImage('assets/images/card_${widget.animal.id}.png'),
+                  fit: BoxFit.cover,
+                  opacity: 0.85,
+                ),
+              ),
+              padding: const EdgeInsets.all(10.0),
+              child: child,
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header Name
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.animal.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14.0,
+                      shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.verified_rounded,
+                  color: Color(0xFF00FFCC),
+                  size: 14.0,
+                ),
+              ],
+            ),
+            const SizedBox(height: 2.0),
+            Text(
+              widget.animal.scientificName,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontStyle: FontStyle.italic,
+                fontSize: 8.0,
+              ),
+            ),
+
+            // Animated high-quality floating animal emoji inside a smooth silhouette
+            Expanded(
+              child: Center(
+                child: _AnimatedAnimalWidget(animal: widget.animal, baseSize: 42.0),
+              ),
+            ),
+
+            // Card Footer Summary
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Rarity: ${widget.animal.rarity.toStringAsFixed(0)}★',
+                    style: const TextStyle(color: Colors.white70, fontSize: 8.5, fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    'VIEW',
+                    style: TextStyle(color: Color(0xFF00FFCC), fontSize: 8.5, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------- TRADING CARD DETAILS DIALOG -----------------
+class _TradingCardDetailDialog extends StatefulWidget {
+  final Animal animal;
+
+  const _TradingCardDetailDialog({required this.animal, Key? key}) : super(key: key);
+
+  @override
+  State<_TradingCardDetailDialog> createState() => _TradingCardDetailDialogState();
+}
+
+class _TradingCardDetailDialogState extends State<_TradingCardDetailDialog> with SingleTickerProviderStateMixin {
+  late AnimationController _rotationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Outer Holographic Premium Card Layout with rotating pokemon-style border
+              AnimatedBuilder(
+                animation: _rotationController,
+                builder: (context, child) {
+                  return Container(
+                    width: 320,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30.0),
+                      gradient: SweepGradient(
+                        center: Alignment.center,
+                        colors: const [
+                          Colors.red, Colors.orange, Colors.yellow, 
+                          Colors.green, Colors.blue, Colors.purple, Colors.red
+                        ],
+                        transform: GradientRotation(_rotationController.value * 2 * pi),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.animal.gradientColors[0].withOpacity(0.6),
+                          blurRadius: 30,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(5.0), // border thickness
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(25.0),
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/card_${widget.animal.id}.png'),
+                          fit: BoxFit.cover,
+                          opacity: 0.9,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Top Card Bar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          widget.animal.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20.0,
+                            shadows: [Shadow(color: Colors.black54, blurRadius: 4.0)],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.shield_rounded, color: Colors.yellowAccent, size: 12.0),
+                              SizedBox(width: 4.0),
+                              Text(
+                                'TRADING',
+                                style: TextStyle(color: Colors.white, fontSize: 8.0, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      widget.animal.scientificName,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontStyle: FontStyle.italic,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Illustration Box (Custom Painted shape silhouette + sparkles + emoji)
+                    Container(
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.75),
+                        borderRadius: BorderRadius.circular(16.0),
+                        border: Border.all(color: Colors.white24),
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/bg_${widget.animal.id}.png'),
+                          fit: BoxFit.cover,
+                          opacity: 0.75,
+                        ),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Sparkles
+                          const Positioned.fill(
+                            child: _HolographicSparklesWidget(),
+                          ),
+                          // Custom Painter rendering the animal silhouette
+                          Positioned.fill(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: CustomPaint(
+                                painter: _SilhouetteDetailPainter(
+                                  points: widget.animal.silhouettePoints,
+                                  color: widget.animal.gradientColors[0],
+                                  useSmooth: true,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Animated high-quality floating emoji
+                          _AnimatedAnimalWidget(animal: widget.animal, baseSize: 70.0),
+                          // Premium Holographic Badge
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4.0),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.08),
+                              ),
+                              child: const Icon(Icons.stars, color: Colors.amber, size: 16.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Lore Description
+                    Container(
+                      padding: const EdgeInsets.all(10.0),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: Text(
+                        widget.animal.description,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11.0,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Vocalization Clue Hint (Neon banner)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00FFCC).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12.0),
+                        border: Border.all(color: const Color(0xFF00FFCC).withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.mic_rounded, color: Color(0xFF00FFCC), size: 16.0),
+                          const SizedBox(width: 8.0),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'VOCAL CLUE PHONETICS',
+                                  style: TextStyle(color: Color(0xFF00FFCC), fontSize: 8.0, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2.0),
+                                Text(
+                                  'Try mimic: "${widget.animal.vocalPhonetics.join('", "')}"',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // 6-Star Stat Attributes list
+                    _buildStatRow('Rarity Tier', widget.animal.rarity),
+                    _buildStatRow('Life Expectancy (Age)', widget.animal.ageRating, customText: widget.animal.ageText),
+                    _buildStatRow('Average Weight', widget.animal.weightRating, customText: widget.animal.weightText),
+                    _buildStatRow('Average Height', widget.animal.heightRating, customText: widget.animal.heightText),
+                    _buildStatRow('Physical Strength', widget.animal.strengthRating, customText: widget.animal.strengthText),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              // Close button
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 36.0),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Draw 6-star bar helper
+  Widget _buildStatRow(String label, double rating, {String? customText}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 10.0, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: Row(
+              children: List.generate(6, (index) {
+                final double starIndex = index + 1.0;
+                if (rating >= starIndex) {
+                  return const Icon(Icons.star_rounded, color: Colors.yellow, size: 14.0);
+                } else if (rating >= starIndex - 0.5) {
+                  return const Icon(Icons.star_half_rounded, color: Colors.yellow, size: 14.0);
+                } else {
+                  return const Icon(Icons.star_outline_rounded, color: Colors.white24, size: 14.0);
+                }
+              }),
+            ),
+          ),
+          if (customText != null)
+            Expanded(
+              flex: 3,
+              child: Text(
+                customText,
+                textAlign: Alignment.centerRight.x > 0 ? TextAlign.right : TextAlign.left,
+                style: const TextStyle(color: Colors.white54, fontSize: 8.5, fontFamily: 'monospace'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// Simple custom painter to draw the vector silhouette inside the card details
+class _SilhouetteDetailPainter extends CustomPainter {
+  final List<Offset> points;
+  final Color color;
+  final bool useSmooth;
+
+  _SilhouetteDetailPainter({
+    required this.points,
+    required this.color,
+    this.useSmooth = true,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    final Path path = Path();
+    final double width = size.width;
+    final double height = size.height;
+
+    if (useSmooth && points.length > 2) {
+      final List<Offset> scaledPoints = points.map((p) => Offset(p.dx * width, p.dy * height)).toList();
+      path.moveTo(scaledPoints[0].dx, scaledPoints[0].dy);
+
+      final int len = scaledPoints.length;
+      for (int i = 0; i < len; i++) {
+        final Offset p0 = scaledPoints[i == 0 ? len - 1 : i - 1];
+        final Offset p1 = scaledPoints[i];
+        final Offset p2 = scaledPoints[(i + 1) % len];
+        final Offset p3 = scaledPoints[(i + 2) % len];
+
+        const double tension = 0.5;
+        final Offset cp1 = p1 + (p2 - p0) * (tension / 3.0);
+        final Offset cp2 = p2 - (p3 - p1) * (tension / 3.0);
+
+        path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p2.dx, p2.dy);
+      }
+      path.close();
+    } else {
+      path.moveTo(points[0].dx * width, points[0].dy * height);
+      for (int i = 1; i < points.length; i++) {
+        path.lineTo(points[i].dx * width, points[i].dy * height);
+      }
+      path.close();
+    }
+
+    // Draw solid shape with slightly transparent color
+    final Paint fillPaint = Paint()
+      ..color = color.withOpacity(0.15)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Draw thick glowing vector borders
+    final Paint borderPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SilhouetteDetailPainter oldDelegate) {
+    return oldDelegate.points != points || oldDelegate.color != color || oldDelegate.useSmooth != useSmooth;
+  }
+}
+
+// Animated High-Quality Floating & Breathing Animal Graphic
+class _AnimatedAnimalWidget extends StatefulWidget {
+  final Animal animal;
+  final double baseSize;
+
+  const _AnimatedAnimalWidget({required this.animal, this.baseSize = 50.0, Key? key}) : super(key: key);
+
+  @override
+  State<_AnimatedAnimalWidget> createState() => _AnimatedAnimalWidgetState();
+}
+
+class _AnimatedAnimalWidgetState extends State<_AnimatedAnimalWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<double>(begin: -3.0, end: 3.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, _slideAnimation.value),
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Glowing background smooth vector silhouette outline
+                SizedBox(
+                  width: widget.baseSize * 1.5,
+                  height: widget.baseSize * 1.5,
+                  child: CustomPaint(
+                    painter: _SilhouetteDetailPainter(
+                      points: widget.animal.silhouettePoints,
+                      color: widget.animal.gradientColors[0].withOpacity(0.3),
+                      useSmooth: true,
+                    ),
+                  ),
+                ),
+                // Realistic Pencil Sketch Image Asset
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(widget.baseSize * 0.6),
+                  child: Container(
+                    width: widget.baseSize * 1.2,
+                    height: widget.baseSize * 1.2,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F5F0),
+                      image: DecorationImage(
+                        image: AssetImage('assets/images/bg_${widget.animal.id}.png'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(4.0),
+                    child: Image.asset(
+                      widget.animal.assetPath,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Sparkles background effect for details box
+class _HolographicSparklesWidget extends StatefulWidget {
+  const _HolographicSparklesWidget({Key? key}) : super(key: key);
+
+  @override
+  State<_HolographicSparklesWidget> createState() => _HolographicSparklesWidgetState();
+}
+
+class _HolographicSparklesWidgetState extends State<_HolographicSparklesWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  final Random _random = Random();
+  late List<Offset> _sparklePositions;
+  late List<double> _sparkleSizes;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+
+    _sparklePositions = List.generate(15, (index) => Offset(_random.nextDouble(), _random.nextDouble()));
+    _sparkleSizes = List.generate(15, (index) => 3.0 + _random.nextDouble() * 5.0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _SparklesPainter(
+            positions: _sparklePositions,
+            sizes: _sparkleSizes,
+            progress: _controller.value,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SparklesPainter extends CustomPainter {
+  final List<Offset> positions;
+  final List<double> sizes;
+  final double progress;
+
+  _SparklesPainter({required this.positions, required this.sizes, required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()..color = Colors.white;
+    for (int i = 0; i < positions.length; i++) {
+      final double offsetProgress = (progress + (i / positions.length)) % 1.0;
+      final double alpha = sin(offsetProgress * pi);
+      paint.color = Colors.white.withOpacity(alpha * 0.3);
+
+      final double px = positions[i].dx * size.width;
+      final double py = positions[i].dy * size.height;
+      final double sz = sizes[i];
+
+      // Draw sparkle cross
+      canvas.drawLine(Offset(px - sz, py), Offset(px + sz, py), paint);
+      canvas.drawLine(Offset(px, py - sz), Offset(px, py + sz), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklesPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
