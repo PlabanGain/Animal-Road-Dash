@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/game_state.dart';
 import '../models/animal.dart';
 import '../widgets/road_painter.dart';
+import '../widgets/bio_gem_widget.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({Key? key}) : super(key: key);
@@ -110,6 +111,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         isCrashed: gameState.isCrashed,
                         animationTime: _animationController.value,
                         animalImages: _animalImages,
+                        hintSilhouetteActive: gameState.hintSilhouetteActive,
+                        hintEchoActive: gameState.hintEchoActive,
+                        hintPitchGuideActive: gameState.hintPitchGuideActive,
                       ),
                     ),
                   );
@@ -157,14 +161,36 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             ),
                           ],
                         ),
-                        // Pause Button
-                        IconButton(
-                          icon: Icon(
-                            gameState.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                            color: Colors.white,
-                            size: 28.0,
-                          ),
-                          onPressed: () => gameState.togglePause(),
+                        // Pause Button & Bio Gem Count
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const BioGemWidget(size: 18.0),
+                                const SizedBox(width: 6.0),
+                                Text(
+                                  '${gameState.ecoShards}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12.0),
+                            IconButton(
+                              icon: Icon(
+                                gameState.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                                color: Colors.white,
+                                size: 28.0,
+                              ),
+                              onPressed: () => gameState.togglePause(),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -271,8 +297,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Left spacing to center the mic button
-                          const SizedBox(width: 50.0),
+                          // Left empty placeholder of same size as Hint button to keep Mic centered
+                          const SizedBox(
+                            width: 70.0,
+                          ),
                           
                           // Centered Speech mic activator button
                           Expanded(
@@ -333,28 +361,35 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             ),
                           ),
                           
-                          // Simulation Cheat button for easy passing
-                          GestureDetector(
-                            onTap: () {
-                              gameState.simulateSpeechPass();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Auto-passed shape cutout (Mocked speech match).'),
-                                  backgroundColor: Color(0xFF00FFCC),
-                                  duration: Duration(milliseconds: 1000),
+                          // Sonic Assist hint button
+                          SizedBox(
+                            width: 70.0,
+                            child: Center(
+                              child: GestureDetector(
+                                onTap: () => _showHintDialog(context, gameState),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00FFCC).withOpacity(0.1),
+                                    border: Border.all(color: const Color(0xFF00FFCC)),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF00FFCC).withOpacity(0.2),
+                                        blurRadius: 4,
+                                      )
+                                    ],
+                                  ),
+                                  child: const Text(
+                                    'HINT',
+                                    style: TextStyle(
+                                      color: Color(0xFF00FFCC),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.15),
-                                border: Border.all(color: Colors.blueAccent),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                'AUTO',
-                                style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10),
                               ),
                             ),
                           ),
@@ -370,7 +405,262 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     );
   }
 
+  void _showHintDialog(BuildContext context, GameState gameState) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(28.0),
+                    border: Border.all(color: const Color(0xFF00FFCC).withOpacity(0.3), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00FFCC).withOpacity(0.1),
+                        blurRadius: 20.0,
+                        spreadRadius: 2.0,
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Title Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'SONIC ASSIST',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20.0,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
+                            // Shards Counter
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const BioGemWidget(size: 18.0),
+                                const SizedBox(width: 6.0),
+                                Text(
+                                  '${gameState.ecoShards}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF00FFCC),
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8.0),
+                        const Text(
+                          'Equip frequency scans to decipher complex animal gates.',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 12.0,
+                          ),
+                        ),
+                        const SizedBox(height: 20.0),
 
+                        // Hint Options List
+                        _buildHintOptionCard(
+                          context: context,
+                          title: 'Vocal Silhouette',
+                          description: 'Visual blueprint overlay showing target animal profile and pitch registry.',
+                          cost: 20,
+                          isActive: gameState.hintSilhouetteActive,
+                          onTap: () {
+                            if (gameState.hintSilhouetteActive) return;
+                            if (gameState.buyHintSilhouette()) {
+                              setState(() {});
+                            } else {
+                              _showNoShardsSnackbar(context);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildHintOptionCard(
+                          context: context,
+                          title: 'Audio Echo',
+                          description: 'Sonar echo ripples radiating from the gate and written subtitle sound clue.',
+                          cost: 35,
+                          isActive: gameState.hintEchoActive,
+                          onTap: () {
+                            if (gameState.hintEchoActive) return;
+                            if (gameState.buyHintEcho()) {
+                              setState(() {});
+                            } else {
+                              _showNoShardsSnackbar(context);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12.0),
+                        _buildHintOptionCard(
+                          context: context,
+                          title: 'Pitch Guide Line',
+                          description: 'Real-time waveform target line matching low, mid, or high voice pitch.',
+                          cost: 40,
+                          isActive: gameState.hintPitchGuideActive,
+                          onTap: () {
+                            if (gameState.hintPitchGuideActive) return;
+                            if (gameState.buyHintPitchGuide()) {
+                              setState(() {});
+                            } else {
+                              _showNoShardsSnackbar(context);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 24.0),
+
+                        // Close Button
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white10,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'DISMISS',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildHintOptionCard({
+    required BuildContext context,
+    required String title,
+    required String description,
+    required int cost,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final bool canAfford = Provider.of<GameState>(context, listen: false).ecoShards >= cost;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.0),
+      child: Container(
+        padding: const EdgeInsets.all(14.0),
+        decoration: BoxDecoration(
+          color: isActive
+              ? const Color(0xFF00FFCC).withOpacity(0.08)
+              : Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(
+            color: isActive
+                ? const Color(0xFF00FFCC)
+                : Colors.white.withOpacity(0.1),
+            width: isActive ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isActive ? const Color(0xFF00FFCC) : Colors.white,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12.0),
+            // Action button or Status
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? Colors.transparent
+                    : (canAfford ? const Color(0xFF00FFCC) : Colors.white10),
+                borderRadius: BorderRadius.circular(12.0),
+                border: isActive ? Border.all(color: const Color(0xFF00FFCC)) : null,
+              ),
+              child: isActive
+                  ? const Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        color: Color(0xFF00FFCC),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10.0,
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const BioGemWidget(size: 14.0),
+                        const SizedBox(width: 4.0),
+                        Text(
+                          '$cost',
+                          style: TextStyle(
+                            color: canAfford ? Colors.black : Colors.white38,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11.0,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNoShardsSnackbar(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Not enough Eco-shards! Complete shapes to earn more.'),
+        backgroundColor: Colors.redAccent,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   // Beautiful Victory Overlay Screen when stage is cleared
   Widget _buildVictoryScreen(BuildContext context, GameState gameState) {

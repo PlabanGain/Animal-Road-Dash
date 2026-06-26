@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/game_state.dart';
 import 'game_screen.dart';
 import 'encyclopedia_screen.dart';
+import '../widgets/bio_gem_widget.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({Key? key}) : super(key: key);
@@ -237,6 +238,33 @@ class MainMenuScreen extends StatelessWidget {
                               ),
                             );
                           },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Eco-shards HUD Counter (Top Right)
+              Positioned(
+                top: 16.0,
+                right: 24.0,
+                child: SafeArea(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const BioGemWidget(size: 20.0),
+                      const SizedBox(width: 8.0),
+                      Text(
+                        '${gameState.ecoShards}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                          shadows: [
+                            Shadow(color: Colors.black, blurRadius: 4.0),
+                          ],
                         ),
                       ),
                     ],

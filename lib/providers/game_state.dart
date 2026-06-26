@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/animal.dart';
@@ -9,11 +10,13 @@ class GameState extends ChangeNotifier {
   static const String _keyUnlockedStage = 'animal_road_unlocked_stage';
   static const String _keyUnlockedAnimals = 'animal_road_unlocked_animals';
   static const String _keyHighScore = 'animal_road_highscore';
+  static const String _keyEcoShards = 'animal_road_eco_shards';
 
   // Game Persistence States
   int _unlockedStage = 1;
   Set<String> _unlockedAnimalIds = {};
   int _highScore = 0;
+  int _ecoShards = 100; // start with 100 Eco-shards!
 
   // Active Play States
   bool _isPlaying = false;
@@ -27,6 +30,7 @@ class GameState extends ChangeNotifier {
   double _currentWallProgress = 0.0; // 0.0 (horizon) to 1.0 (passed runner)
   String _runnerShape = 'human'; // 'human' or the animal id
   int _score = 0;
+  int _streakCount = 0; // consecutive wall match streak
 
   // Vocal / Microphone Simulation States
   bool _isListening = false;
@@ -34,6 +38,16 @@ class GameState extends ChangeNotifier {
   String _listeningWaveformMessage = 'Tap Mic and Speak!';
   double _micAmplitude = 0.0; // Used for animated mic ripples
   Timer? _waveTimer;
+
+  // Earning tracking states
+  double _lastResonanceScore = 0.0;
+  int _lastEarnedShards = 0;
+  String _lastShardMessage = '';
+
+  // Hint active states for current wall
+  bool _hintSilhouetteActive = false;
+  bool _hintEchoActive = false;
+  bool _hintPitchGuideActive = false;
 
   // Game Loop Ticker
   Timer? _gameLoopTimer;
@@ -43,6 +57,7 @@ class GameState extends ChangeNotifier {
   int get unlockedStage => _unlockedStage;
   Set<String> get unlockedAnimalIds => _unlockedAnimalIds;
   int get highScore => _highScore;
+  int get ecoShards => _ecoShards;
   bool get isPlaying => _isPlaying;
   bool get isPaused => _isPaused;
   bool get isCrashed => _isCrashed;
@@ -54,11 +69,20 @@ class GameState extends ChangeNotifier {
   double get currentWallProgress => _currentWallProgress;
   String get runnerShape => _runnerShape;
   int get score => _score;
+  int get streakCount => _streakCount;
 
   bool get isListening => _isListening;
   String get lastSpokenText => _lastSpokenText;
   String get listeningWaveformMessage => _listeningWaveformMessage;
   double get micAmplitude => _micAmplitude;
+
+  double get lastResonanceScore => _lastResonanceScore;
+  int get lastEarnedShards => _lastEarnedShards;
+  String get lastShardMessage => _lastShardMessage;
+
+  bool get hintSilhouetteActive => _hintSilhouetteActive;
+  bool get hintEchoActive => _hintEchoActive;
+  bool get hintPitchGuideActive => _hintPitchGuideActive;
 
   // Constructor
   GameState() {
@@ -71,6 +95,7 @@ class GameState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _unlockedStage = prefs.getInt(_keyUnlockedStage) ?? 1;
     _highScore = prefs.getInt(_keyHighScore) ?? 0;
+    _ecoShards = prefs.getInt(_keyEcoShards) ?? 100;
     final unlockedList = prefs.getStringList(_keyUnlockedAnimals) ?? [];
     _unlockedAnimalIds = unlockedList.toSet();
     notifyListeners();
@@ -81,6 +106,7 @@ class GameState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyUnlockedStage, _unlockedStage);
     await prefs.setInt(_keyHighScore, _highScore);
+    await prefs.setInt(_keyEcoShards, _ecoShards);
     await prefs.setStringList(_keyUnlockedAnimals, _unlockedAnimalIds.toList());
   }
 
@@ -90,6 +116,8 @@ class GameState extends ChangeNotifier {
     _unlockedAnimalIds.clear();
     _highScore = 0;
     _score = 0;
+    _ecoShards = 100;
+    _streakCount = 0;
     _isPlaying = false;
     _isPaused = false;
     _isCrashed = false;
@@ -98,9 +126,58 @@ class GameState extends ChangeNotifier {
     _currentWallIndex = 0;
     _currentWallProgress = 0.0;
     _runnerShape = 'human';
+    _hintSilhouetteActive = false;
+    _hintEchoActive = false;
+    _hintPitchGuideActive = false;
+    _lastResonanceScore = 0.0;
+    _lastEarnedShards = 0;
+    _lastShardMessage = '';
     _stopGameLoop();
     await _saveProgress();
     notifyListeners();
+  }
+
+  void addEcoShards(int amount) {
+    _ecoShards += amount;
+    _saveProgress();
+    notifyListeners();
+  }
+
+  bool spendEcoShards(int amount) {
+    if (_ecoShards >= amount) {
+      _ecoShards -= amount;
+      _saveProgress();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  bool buyHintSilhouette() {
+    if (spendEcoShards(20)) {
+      _hintSilhouetteActive = true;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  bool buyHintEcho() {
+    if (spendEcoShards(35)) {
+      _hintEchoActive = true;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  bool buyHintPitchGuide() {
+    if (spendEcoShards(40)) {
+      _hintPitchGuideActive = true;
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 
   // Initialize and start a Stage
@@ -116,8 +193,15 @@ class GameState extends ChangeNotifier {
     _currentWallProgress = 0.0;
     _runnerShape = 'human';
     _score = 0;
+    _streakCount = 0;
     _lastSpokenText = '';
     _isListening = false;
+    _hintSilhouetteActive = false;
+    _hintEchoActive = false;
+    _hintPitchGuideActive = false;
+    _lastResonanceScore = 0.0;
+    _lastEarnedShards = 0;
+    _lastShardMessage = '';
 
     _startGameLoop();
     notifyListeners();
@@ -130,6 +214,10 @@ class GameState extends ChangeNotifier {
     _isCrashed = false;
     _recoveryTimeLeft = 0.0;
     _isFinished = false;
+    _streakCount = 0;
+    _hintSilhouetteActive = false;
+    _hintEchoActive = false;
+    _hintPitchGuideActive = false;
     _stopGameLoop();
     notifyListeners();
   }
@@ -213,6 +301,10 @@ class GameState extends ChangeNotifier {
         // Load next wall
         _currentWallIndex++;
         _currentWallProgress = _currentWallProgress - 0.5;
+        // Reset hints for next wall!
+        _hintSilhouetteActive = false;
+        _hintEchoActive = false;
+        _hintPitchGuideActive = false;
       } else {
         // Stage Complete!
         _triggerVictory();
@@ -225,6 +317,7 @@ class GameState extends ChangeNotifier {
   // Trigger a crash back animation (fallback 3.5 seconds worth of running)
   void _triggerCrash() {
     _isCrashed = true;
+    _streakCount = 0; // Reset streak on crash!
     _recoveryTimeLeft = 3.5; // Invulnerable fallback state for 3.5 seconds
     
     // Fall back 3.5 seconds worth of running progress
@@ -302,7 +395,51 @@ class GameState extends ChangeNotifier {
       _runnerShape = targetAnimal.id;
       _isCrashed = false;
       _recoveryTimeLeft = 0.0;
-      _listeningWaveformMessage = 'Perfect! Shapeshifted to ${targetAnimal.name}!';
+
+      // 1. Resonance Score
+      final double resonance = 0.65 + 0.35 * (pi / 4.0 + 0.1 * sin(DateTime.now().millisecond)); // simulated 75%-100%
+      _lastResonanceScore = resonance;
+      int baseShards = 0;
+      if (resonance >= 0.90) {
+        baseShards = 15;
+      } else if (resonance >= 0.70) {
+        baseShards = 5;
+      }
+
+      // 2. Streak
+      _streakCount++;
+      double multiplier = 1.0;
+      if (_streakCount >= 9) {
+        multiplier = 2.0;
+      } else if (_streakCount >= 6) {
+        multiplier = 1.75;
+      } else if (_streakCount >= 3) {
+        multiplier = 1.5;
+      }
+
+      int earned = (baseShards * multiplier).round();
+
+      // 3. Decibel Shifting (Vocal Flexibility)
+      bool flexBonus = false;
+      if (_currentWallIndex > 0) {
+        final prevAnimal = _activeStage.targetAnimals[_currentWallIndex - 1];
+        if (targetAnimal.vocalPitch != prevAnimal.vocalPitch) {
+          earned += 20;
+          flexBonus = true;
+        }
+      }
+
+      _ecoShards += earned;
+      _lastEarnedShards = earned;
+      _saveProgress();
+
+      if (flexBonus) {
+        _lastShardMessage = '+$earned Shards! (${(resonance * 100).toStringAsFixed(0)}% Resonance, $_streakCount-Streak, Vocal Flex!)';
+      } else {
+        _lastShardMessage = '+$earned Shards! (${(resonance * 100).toStringAsFixed(0)}% Resonance, $_streakCount-Streak)';
+      }
+
+      _listeningWaveformMessage = 'Perfect! Shapeshifted to ${targetAnimal.name}!\n$_lastShardMessage';
 
       // Unlock this card in the bestiary if not unlocked already
       if (!_unlockedAnimalIds.contains(targetAnimal.id)) {
@@ -314,6 +451,7 @@ class GameState extends ChangeNotifier {
       _lastTickTime = DateTime.now();
     } else {
       // FAILURE CONDITION
+      _streakCount = 0; // reset streak on failure
       _listeningWaveformMessage = 'Sound mismatch. Try again!';
     }
 
@@ -327,7 +465,15 @@ class GameState extends ChangeNotifier {
     // Morph immediately to the target animal
     _runnerShape = targetAnimal.id;
     _isCrashed = false;
-    _listeningWaveformMessage = 'Simulation Auto-Passed!';
+
+    _streakCount++;
+    int earned = 15; // default simulated shards
+    _ecoShards += earned;
+    _lastEarnedShards = earned;
+    _lastShardMessage = '+$earned Shards! (Simulation Match)';
+    _listeningWaveformMessage = 'Simulation Auto-Passed!\n$_lastShardMessage';
+    _saveProgress();
+
     if (!_unlockedAnimalIds.contains(targetAnimal.id)) {
       _unlockedAnimalIds.add(targetAnimal.id);
       _saveProgress();

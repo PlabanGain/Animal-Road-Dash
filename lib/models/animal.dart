@@ -114,6 +114,28 @@ class Animal {
     }
   }
 
+  String get vocalPitch {
+    // Low pitch animals
+    const lowPitchIds = {
+      'cow', 'pig', 'elephant', 'lion', 'tiger', 'bear', 'bull', 'gorilla', 
+      'greenland_shark', 'hippo', 'walrus', 'rhino', 'bison', 'camel'
+    };
+    // High pitch animals
+    const highPitchIds = {
+      'chicken', 'duck', 'mouse', 'rabbit', 'dolphin', 'eagle', 'axolotl', 
+      'tardigrade', 'chameleon', 'frog', 'seahorse', 'quokka', 'canary', 
+      'parrot', 'monkey', 'lemur'
+    };
+    
+    if (lowPitchIds.contains(id)) {
+      return 'low';
+    } else if (highPitchIds.contains(id)) {
+      return 'high';
+    } else {
+      return 'mid';
+    }
+  }
+
   String get assetPath => 'assets/images/$id.png';
 
   Path getPath(double width, double height) {

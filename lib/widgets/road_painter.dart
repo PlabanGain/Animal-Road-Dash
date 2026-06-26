@@ -12,6 +12,9 @@ class RoadPainter extends CustomPainter {
   final bool isCrashed;
   final double animationTime; // continuously running time variable for road lines
   final Map<String, ui.Image> animalImages;
+  final bool hintSilhouetteActive;
+  final bool hintEchoActive;
+  final bool hintPitchGuideActive;
 
   RoadPainter({
     required this.wallProgress,
@@ -21,6 +24,9 @@ class RoadPainter extends CustomPainter {
     required this.isCrashed,
     required this.animationTime,
     required this.animalImages,
+    required this.hintSilhouetteActive,
+    required this.hintEchoActive,
+    required this.hintPitchGuideActive,
   });
 
   @override
@@ -379,6 +385,95 @@ class RoadPainter extends CustomPainter {
         ..color = Colors.black.withOpacity(0.35)
         ..style = PaintingStyle.fill;
       canvas.drawPath(wallDepthPath, depthPaint);
+
+      // --- HINT 1: Vocal Silhouette Overlay ---
+      if (isCurrent && hintSilhouetteActive) {
+        final Path rawAnimalPath = obstacleAnimal.getSmoothPath(cutoutW, cutoutH);
+        final Rect animalBounds = rawAnimalPath.getBounds();
+        final Offset centerOffset = wallCenter - Offset(animalBounds.width / 2, animalBounds.height / 2);
+        final Path animalOutlinePath = rawAnimalPath.shift(centerOffset);
+
+        final Paint blueprintOutline = Paint()
+          ..color = const Color(0xFF00FFCC)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0 + 2.0 * sin(animationTime * 10 * 2 * pi)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+        canvas.drawPath(animalOutlinePath, blueprintOutline);
+
+        final Paint blueprintDashed = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
+        canvas.drawPath(animalOutlinePath, blueprintDashed);
+
+        final String text = '${obstacleAnimal.name.toUpperCase()} (${obstacleAnimal.vocalPitch.toUpperCase()} PITCH)';
+        final TextPainter textPainter = TextPainter(
+          text: TextSpan(
+            text: text,
+            style: TextStyle(
+              color: const Color(0xFF00FFCC),
+              fontSize: (wallWidth * 0.08).clamp(12.0, 24.0),
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.0,
+              shadows: const [
+                Shadow(color: Colors.black, blurRadius: 4.0),
+                Shadow(color: Color(0xFF00FFCC), blurRadius: 8.0),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(
+            wallCenter.dx - textPainter.width / 2,
+            tL.dy - textPainter.height - 8.0,
+          ),
+        );
+      }
+
+      // --- HINT 2: Audio Echo Sonar Ripples ---
+      if (isCurrent && hintEchoActive) {
+        final double maxRadius = wallWidth * 0.8;
+        for (int i = 0; i < 3; i++) {
+          final double phase = (animationTime * 1.5 + i / 3.0) % 1.0;
+          final double radius = maxRadius * phase;
+          final double opacity = (1.0 - phase) * 0.6;
+          final Paint echoPaint = Paint()
+            ..color = const Color(0xFF00E5FF).withOpacity(opacity)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.0
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+          canvas.drawCircle(wallCenter, radius, echoPaint);
+        }
+
+        final String soundClue = '🔊 "${obstacleAnimal.vocalClue.toUpperCase()}"';
+        final TextPainter cluePainter = TextPainter(
+          text: TextSpan(
+            text: soundClue,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: (wallWidth * 0.07).clamp(11.0, 20.0),
+              fontWeight: FontWeight.w900,
+              fontStyle: FontStyle.italic,
+              shadows: const [
+                Shadow(color: Colors.black, blurRadius: 6.0),
+                Shadow(color: Color(0xFF00E5FF), blurRadius: 10.0),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        cluePainter.layout();
+        cluePainter.paint(
+          canvas,
+          Offset(
+            wallCenter.dx - cluePainter.width / 2,
+            wallCenter.dy + cutoutH / 2 + 10.0,
+          ),
+        );
+      }
     }
 
     // Paint the background wall first (further away), then the foreground wall (painter's algorithm)
@@ -389,6 +484,59 @@ class RoadPainter extends CustomPainter {
     if (currentWallIndex < activeStage.targetAnimals.length) {
       final Animal currentAnimal = activeStage.targetAnimals[currentWallIndex];
       drawWall(currentAnimal, wallProgress, true);
+    }
+
+    // --- HINT 3: Pitch Guide Line Waveform ---
+    if (hintPitchGuideActive && currentWallIndex < activeStage.targetAnimals.length) {
+      final currentAnimal = activeStage.targetAnimals[currentWallIndex];
+      final String pitch = currentAnimal.vocalPitch; // 'low', 'mid', 'high'
+      double targetY = h * 0.6; // default mid
+      Color pitchColor = const Color(0xFF00FFCC); // Cyan/green for mid
+      if (pitch == 'low') {
+        targetY = h * 0.75;
+        pitchColor = const Color(0xFFFF5722); // Orange-red for low/bass
+      } else if (pitch == 'high') {
+        targetY = h * 0.45;
+        pitchColor = const Color(0xFFFFEB3B); // Yellow for high/treble
+      }
+
+      final Paint guidePaint = Paint()
+        ..color = pitchColor.withOpacity(0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
+
+      final Path wavePath = Path();
+      wavePath.moveTo(0, targetY);
+      for (double x = 0; x <= w; x += 5) {
+        final double y = targetY + 6.0 * sin((x / 20.0) + (animationTime * 10 * 2 * pi));
+        wavePath.lineTo(x, y);
+      }
+      canvas.drawPath(wavePath, guidePaint);
+
+      final Paint thinPaint = Paint()
+        ..color = Colors.white.withOpacity(0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      canvas.drawPath(wavePath, thinPaint);
+
+      final TextPainter labelPainter = TextPainter(
+        text: TextSpan(
+          text: 'TARGET FREQUENCY: ${pitch.toUpperCase()}',
+          style: TextStyle(
+            color: pitchColor,
+            fontSize: 12.0,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+            shadows: const [
+              Shadow(color: Colors.black, blurRadius: 4.0),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      labelPainter.layout();
+      labelPainter.paint(canvas, Offset(16.0, targetY - labelPainter.height - 4.0));
     }
 
     // 6. Draw the Runner (Morphed or Human)
@@ -539,6 +687,9 @@ class RoadPainter extends CustomPainter {
         oldDelegate.isCrashed != isCrashed ||
         oldDelegate.animationTime != animationTime ||
         oldDelegate.currentWallIndex != currentWallIndex ||
-        oldDelegate.animalImages != animalImages;
+        oldDelegate.animalImages != animalImages ||
+        oldDelegate.hintSilhouetteActive != hintSilhouetteActive ||
+        oldDelegate.hintEchoActive != hintEchoActive ||
+        oldDelegate.hintPitchGuideActive != hintPitchGuideActive;
   }
 }
