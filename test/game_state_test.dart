@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chemical_craft/providers/game_state.dart';
+import 'package:chemical_craft/models/animal.dart';
+import 'package:chemical_craft/models/stage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +49,15 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       expect(gameState.unlockedStage, 5);
+    });
+
+    test('generating stages 1 to 50 works without throwing exceptions', () {
+      for (int i = 1; i <= 50; i++) {
+        final stage = Stage.generate(i);
+        expect(stage, isNotNull);
+        expect(stage.targetAnimals, isNotEmpty);
+        expect(stage.targetAnimals.first.id, allAnimals[i - 1].id);
+      }
     });
   });
 }

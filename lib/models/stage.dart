@@ -64,9 +64,15 @@ class Stage {
     // Shuffle the walls slightly so that the new animal is spread out,
     // but ensure the first wall is always the new animal to introduce it.
     if (stageWalls.length > 2) {
-      final Animal first = stageWalls.removeAt(stageWalls.indexOf(newAnimal));
-      stageWalls.shuffle(random);
-      stageWalls.insert(0, first);
+      final int index = stageWalls.indexOf(newAnimal);
+      if (index != -1) {
+        final Animal first = stageWalls.removeAt(index);
+        stageWalls.shuffle(random);
+        stageWalls.insert(0, first);
+      } else {
+        stageWalls.shuffle(random);
+        stageWalls[0] = newAnimal;
+      }
     }
 
     return Stage(
