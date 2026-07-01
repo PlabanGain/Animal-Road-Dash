@@ -738,6 +738,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       // Return to Menu
                       TextButton(
                         onPressed: () {
+                          gameState.exitGame();
                           Navigator.of(context).pop();
                         },
                         child: const Text(

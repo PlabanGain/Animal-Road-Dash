@@ -328,7 +328,7 @@ class GameState extends ChangeNotifier {
   }
 
   // Trigger stage cleared success
-  void _triggerVictory() {
+  Future<void> _triggerVictory() async {
     _isFinished = true;
     _isPlaying = false;
     _stopGameLoop();
@@ -343,7 +343,7 @@ class GameState extends ChangeNotifier {
       _unlockedAnimalIds.add(animal.id);
     }
 
-    _saveProgress();
+    await _saveProgress();
     notifyListeners();
   }
 
@@ -431,7 +431,7 @@ class GameState extends ChangeNotifier {
 
       _ecoShards += earned;
       _lastEarnedShards = earned;
-      _saveProgress();
+      await _saveProgress();
 
       if (flexBonus) {
         _lastShardMessage = '+$earned Shards! (${(resonance * 100).toStringAsFixed(0)}% Resonance, $_streakCount-Streak, Vocal Flex!)';
@@ -444,7 +444,7 @@ class GameState extends ChangeNotifier {
       // Unlock this card in the bestiary if not unlocked already
       if (!_unlockedAnimalIds.contains(targetAnimal.id)) {
         _unlockedAnimalIds.add(targetAnimal.id);
-        _saveProgress();
+        await _saveProgress();
       }
 
       // Resume tick time tracker
@@ -460,7 +460,7 @@ class GameState extends ChangeNotifier {
   }
 
   // Direct mock passing helper to make testing accessible without real microphone typing
-  void simulateSpeechPass() {
+  Future<void> simulateSpeechPass() async {
     final Animal targetAnimal = _activeStage.targetAnimals[_currentWallIndex];
     // Morph immediately to the target animal
     _runnerShape = targetAnimal.id;
@@ -472,11 +472,11 @@ class GameState extends ChangeNotifier {
     _lastEarnedShards = earned;
     _lastShardMessage = '+$earned Shards! (Simulation Match)';
     _listeningWaveformMessage = 'Simulation Auto-Passed!\n$_lastShardMessage';
-    _saveProgress();
+    await _saveProgress();
 
     if (!_unlockedAnimalIds.contains(targetAnimal.id)) {
       _unlockedAnimalIds.add(targetAnimal.id);
-      _saveProgress();
+      await _saveProgress();
     }
     _lastTickTime = DateTime.now();
     notifyListeners();
