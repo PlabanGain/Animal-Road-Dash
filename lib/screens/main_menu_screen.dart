@@ -4,6 +4,7 @@ import '../providers/game_state.dart';
 import 'game_screen.dart';
 import 'encyclopedia_screen.dart';
 import '../widgets/bio_gem_widget.dart';
+import '../models/animal.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({Key? key}) : super(key: key);
@@ -220,20 +221,44 @@ class MainMenuScreen extends StatelessWidget {
                                       : [],
                                 ),
                                 child: Center(
-                                  child: isLevelUnlocked
-                                      ? Text(
-                                          '$stageNum',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16.0,
+                                  child: stageNum < unlocked
+                                      ? Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                child: Image.asset(
+                                                  allAnimals[stageNum - 1].assetPath,
+                                                  fit: BoxFit.contain,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2.0),
+                                              Text(
+                                                '$stageNum',
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 10.0,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         )
-                                      : const Icon(
-                                          Icons.lock_outline_rounded,
-                                          color: Colors.white24,
-                                          size: 16.0,
-                                        ),
+                                      : stageNum == unlocked
+                                          ? Text(
+                                              '$stageNum',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16.0,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.lock_outline_rounded,
+                                              color: Colors.white24,
+                                              size: 16.0,
+                                            ),
                                 ),
                               ),
                             );
