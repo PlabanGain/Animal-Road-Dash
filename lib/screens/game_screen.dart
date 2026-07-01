@@ -715,9 +715,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                   ),
                   const SizedBox(height: 24.0),
 
-                  const Text(
-                    'NEW TRADING CARD UNLOCKED',
-                    style: TextStyle(
+                  Text(
+                    gameState.lastVictoryWasReplay
+                        ? 'CARD RECOLLECTED!'
+                        : 'NEW TRADING CARD UNLOCKED',
+                    style: const TextStyle(
                       color: Color(0xFF00FFCC),
                       fontSize: 12.0,
                       fontWeight: FontWeight.bold,
@@ -728,6 +730,22 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
                   // Showcase unlocked Pokemon Card Style preview
                   _VictoryCardWidget(unlockedAnimal: unlockedAnimal),
+
+                  if (gameState.lastVictoryWasReplay) ...[
+                    const SizedBox(height: 16.0),
+                    const Text(
+                      '+30 Bonus Eco-shards!',
+                      style: TextStyle(
+                        color: Colors.amber,
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                        shadows: [
+                          Shadow(color: Colors.black, blurRadius: 4.0),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 32.0),
 

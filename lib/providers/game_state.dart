@@ -31,6 +31,7 @@ class GameState extends ChangeNotifier {
   String _runnerShape = 'human'; // 'human' or the animal id
   int _score = 0;
   int _streakCount = 0; // consecutive wall match streak
+  bool _lastVictoryWasReplay = false;
 
   // Vocal / Microphone Simulation States
   bool _isListening = false;
@@ -83,6 +84,7 @@ class GameState extends ChangeNotifier {
   bool get hintSilhouetteActive => _hintSilhouetteActive;
   bool get hintEchoActive => _hintEchoActive;
   bool get hintPitchGuideActive => _hintPitchGuideActive;
+  bool get lastVictoryWasReplay => _lastVictoryWasReplay;
 
   // Constructor
   GameState() {
@@ -202,6 +204,7 @@ class GameState extends ChangeNotifier {
     _lastResonanceScore = 0.0;
     _lastEarnedShards = 0;
     _lastShardMessage = '';
+    _lastVictoryWasReplay = false;
 
     _startGameLoop();
     notifyListeners();
@@ -333,9 +336,17 @@ class GameState extends ChangeNotifier {
     _isPlaying = false;
     _stopGameLoop();
 
-    // Unlock next stage
-    if (_currentStageIndex == _unlockedStage && _unlockedStage < 50) {
-      _unlockedStage++;
+    // Check if it's a replay before updating unlockedStage
+    _lastVictoryWasReplay = _currentStageIndex < _unlockedStage;
+
+    if (_lastVictoryWasReplay) {
+      // Award 30 bonus Eco-shards for replay
+      _ecoShards += 30;
+    } else {
+      // Unlock next stage
+      if (_currentStageIndex == _unlockedStage && _unlockedStage < 50) {
+        _unlockedStage++;
+      }
     }
 
     // Automatically unlock all cards encountered in this stage
@@ -478,6 +489,7 @@ class GameState extends ChangeNotifier {
       _unlockedAnimalIds.add(targetAnimal.id);
       await _saveProgress();
     }
+    _currentWallProgress = 1.0;
     _lastTickTime = DateTime.now();
     notifyListeners();
   }
