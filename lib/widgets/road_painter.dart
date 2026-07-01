@@ -253,115 +253,60 @@ class RoadPainter extends CustomPainter {
         wallShadow,
       );
 
-      final ui.Image? animalImage = animalImages[obstacleAnimal.id];
+      // Vector cutout (ensures cross-platform consistency and prevents bugs on Web/Edge)
+      final Path rawAnimalPath = obstacleAnimal.getSmoothPath(cutoutW, cutoutH);
+      final Rect animalBounds = rawAnimalPath.getBounds();
+      final Offset centerOffset = wallCenter - Offset(animalBounds.width / 2, animalBounds.height / 2);
+      final Path animalCutout = rawAnimalPath.shift(centerOffset);
 
-      if (animalImage != null) {
-        // High Quality PNG-based alpha mask cutout
-        canvas.saveLayer(wallRect, Paint());
+      final Path finalWallPath = Path.combine(
+        PathOperation.difference,
+        wallPolygon,
+        animalCutout,
+      );
 
-        // 1. Draw solid wall background color
-        final Paint wallBgPaint = Paint()
-          ..color = wallColor
-          ..style = PaintingStyle.fill;
-        canvas.drawPath(wallPolygon, wallBgPaint);
+      canvas.save();
+      canvas.clipPath(finalWallPath);
 
-        // 2. Draw bricks clipped to the wall
-        canvas.save();
-        canvas.clipPath(wallPolygon);
-        final Paint brickLinePaint = Paint()
-          ..color = Colors.black.withOpacity(0.35)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0 + (1.5 * tWall);
+      final Paint wallBgPaint = Paint()
+        ..color = wallColor
+        ..style = PaintingStyle.fill;
+      canvas.drawRect(wallRect, wallBgPaint);
 
-        final int brickRows = 8;
-        for (int r = 1; r < brickRows; r++) {
-          final double ratio = r / brickRows;
-          final Offset leftPt = Offset(tL.dx + (bL.dx - tL.dx) * ratio, tL.dy + (bL.dy - tL.dy) * ratio);
-          final Offset rightPt = Offset(tR.dx + (bR.dx - tR.dx) * ratio, tR.dy + (bR.dy - tR.dy) * ratio);
-          canvas.drawLine(leftPt, rightPt, brickLinePaint);
+      final Paint brickLinePaint = Paint()
+        ..color = Colors.black.withOpacity(0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 + (1.5 * tWall);
 
-          final int bricksPerRow = 6;
-          for (int c = 0; c <= bricksPerRow; c++) {
-            double colRatio = (c + (r % 2 == 0 ? 0.5 : 0.0)) / bricksPerRow;
-            if (colRatio > 1.0) colRatio -= 1.0;
+      final int brickRows = 8;
+      for (int r = 1; r < brickRows; r++) {
+        final double ratio = r / brickRows;
+        final Offset leftPt = Offset(tL.dx + (bL.dx - tL.dx) * ratio, tL.dy + (bL.dy - tL.dy) * ratio);
+        final Offset rightPt = Offset(tR.dx + (bR.dx - tR.dx) * ratio, tR.dy + (bR.dy - tR.dy) * ratio);
+        canvas.drawLine(leftPt, rightPt, brickLinePaint);
 
-            final double ratioPrev = (r - 1) / brickRows;
-            final Offset lpPrev = Offset(tL.dx + (bL.dx - tL.dx) * ratioPrev, tL.dy + (bL.dy - tL.dy) * ratioPrev);
-            final Offset rpPrev = Offset(tR.dx + (bR.dx - tR.dx) * ratioPrev, tR.dy + (bR.dy - tR.dy) * ratioPrev);
+        final int bricksPerRow = 6;
+        for (int c = 0; c <= bricksPerRow; c++) {
+          double colRatio = (c + (r % 2 == 0 ? 0.5 : 0.0)) / bricksPerRow;
+          if (colRatio > 1.0) colRatio -= 1.0;
 
-            final Offset pt1 = lpPrev + (rpPrev - lpPrev) * colRatio;
-            final Offset pt2 = leftPt + (rightPt - leftPt) * colRatio;
-            canvas.drawLine(pt1, pt2, brickLinePaint);
-          }
+          final double ratioPrev = (r - 1) / brickRows;
+          final Offset lpPrev = Offset(tL.dx + (bL.dx - tL.dx) * ratioPrev, tL.dy + (bL.dy - tL.dy) * ratioPrev);
+          final Offset rpPrev = Offset(tR.dx + (bR.dx - tR.dx) * ratioPrev, tR.dy + (bR.dy - tR.dy) * ratioPrev);
+
+          final Offset pt1 = lpPrev + (rpPrev - lpPrev) * colRatio;
+          final Offset pt2 = leftPt + (rightPt - leftPt) * colRatio;
+          canvas.drawLine(pt1, pt2, brickLinePaint);
         }
-        canvas.restore();
-
-        // 3. Cutout the exact shape of the Animal PNG using BlendMode.dstOut
-        final Paint cutoutPaint = Paint()..blendMode = BlendMode.dstOut;
-        canvas.drawImageRect(
-          animalImage,
-          Rect.fromLTWH(0, 0, animalImage.width.toDouble(), animalImage.height.toDouble()),
-          cutoutRect,
-          cutoutPaint,
-        );
-
-        canvas.restore();
-      } else {
-        // Fallback Vector cutout if image is not loaded
-        final Path rawAnimalPath = obstacleAnimal.getSmoothPath(cutoutW, cutoutH);
-        final Rect animalBounds = rawAnimalPath.getBounds();
-        final Offset centerOffset = wallCenter - Offset(animalBounds.width / 2, animalBounds.height / 2);
-        final Path animalCutout = rawAnimalPath.shift(centerOffset);
-
-        final Path finalWallPath = Path.combine(
-          PathOperation.difference,
-          wallPolygon,
-          animalCutout,
-        );
-
-        canvas.save();
-        canvas.clipPath(finalWallPath);
-
-        final Paint wallBgPaint = Paint()
-          ..color = wallColor
-          ..style = PaintingStyle.fill;
-        canvas.drawRect(wallRect, wallBgPaint);
-
-        final Paint brickLinePaint = Paint()
-          ..color = Colors.black.withOpacity(0.35)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0 + (1.5 * tWall);
-
-        final int brickRows = 8;
-        for (int r = 1; r < brickRows; r++) {
-          final double ratio = r / brickRows;
-          final Offset leftPt = Offset(tL.dx + (bL.dx - tL.dx) * ratio, tL.dy + (bL.dy - tL.dy) * ratio);
-          final Offset rightPt = Offset(tR.dx + (bR.dx - tR.dx) * ratio, tR.dy + (bR.dy - tR.dy) * ratio);
-          canvas.drawLine(leftPt, rightPt, brickLinePaint);
-
-          final int bricksPerRow = 6;
-          for (int c = 0; c <= bricksPerRow; c++) {
-            double colRatio = (c + (r % 2 == 0 ? 0.5 : 0.0)) / bricksPerRow;
-            if (colRatio > 1.0) colRatio -= 1.0;
-
-            final double ratioPrev = (r - 1) / brickRows;
-            final Offset lpPrev = Offset(tL.dx + (bL.dx - tL.dx) * ratioPrev, tL.dy + (bL.dy - tL.dy) * ratioPrev);
-            final Offset rpPrev = Offset(tR.dx + (bR.dx - tR.dx) * ratioPrev, tR.dy + (bR.dy - tR.dy) * ratioPrev);
-
-            final Offset pt1 = lpPrev + (rpPrev - lpPrev) * colRatio;
-            final Offset pt2 = leftPt + (rightPt - leftPt) * colRatio;
-            canvas.drawLine(pt1, pt2, brickLinePaint);
-          }
-        }
-        canvas.restore();
-
-        // Highlight
-        final Paint cutoutHighlight = Paint()
-          ..color = const Color(0xFF00FF88).withOpacity(0.5 + (0.5 * tWall))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5 + (2.0 * tWall);
-        canvas.drawPath(animalCutout, cutoutHighlight);
       }
+      canvas.restore();
+
+      // Highlight
+      final Paint cutoutHighlight = Paint()
+        ..color = const Color(0xFF00FF88).withOpacity(0.5 + (0.5 * tWall))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5 + (2.0 * tWall);
+      canvas.drawPath(animalCutout, cutoutHighlight);
 
       // Draw neon border around wall outer bounds
       final Paint wallBorderPaint = Paint()
